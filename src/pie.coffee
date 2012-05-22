@@ -1,10 +1,10 @@
-fs           = require "node-fs"
-path         = require "path"
-async        = require "async"
-CoffeeScript = require "coffee-script"
-glob         = require "glob"
-nStore       = require "nstore"
-_            = require "underscore"
+fs            = require "node-fs"
+path          = require "path"
+async         = require "async"
+CoffeeScript  = require "coffee-script"
+glob          = require "glob"
+nStore        = require "nstore"
+_             = require "underscore"
 
 _mappings = []
 _mtimes = null
