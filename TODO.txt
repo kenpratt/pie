@@ -1,0 +1,9 @@
+* create git repo!
+* convert to caolan/async to remove accidental parallelism, and use explicit _.series and _.parellel? or leave it as _.each?
+* figure out way to run mappings against jetsky code (maybe as simple as a cd?)
+* in case of many-to-one (like sprite sheet), I might need a custom DSL function, or else use an array for sources?
+* put in a recursive watch to see when files are changed/added/removed
+* add lookup to figure out which rules to trigger when a file changes (maybe pre-calc the tree that will be computed to avoid duplicates?)
+* do I need a reverse dependency map in order to specify granular build targets? is it a required feature?
+* store mappings in a separate file
+* (advanced) store mapping file mtime, cache mappings and only recompute when needed? (this probably won't work due to anon fun serialization, and probably isn't needed anyhow)
