@@ -1,5 +1,3 @@
-* create git repo!
-* convert to caolan/async to remove accidental parallelism, and use explicit _.series and _.parellel? or leave it as _.each?
 * figure out way to run mappings against jetsky code (maybe as simple as a cd?)
 * in case of many-to-one (like sprite sheet), I might need a custom DSL function, or else use an array for sources?
 * put in a recursive watch to see when files are changed/added/removed

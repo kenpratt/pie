@@ -1,5 +1,6 @@
 fs           = require "node-fs"
 path         = require "path"
+async        = require "async"
 CoffeeScript = require "coffee-script"
 glob         = require "glob"
 nStore       = require "nstore"
@@ -45,17 +46,27 @@ map "src/**/*.coffee",
         fs.writeFile dest, res, cb
 
 load () ->
-  _.each _mappings, (m) ->
+  processMapping = (m, cb) ->
     console.log "running mapping", m
     glob m.src, {}, (err, files) ->
-      return console.log("[ERROR]", err) if err
+      return cb(err) if err
+
       console.log "found files", m.src, files
-      _.each files, (f) ->
+      processFile = (f, innerCb) ->
         hasChanged f, (err, changed) ->
-          return console.log("[ERROR]", f, err) if err
+          return innerCb(err) if err
           if changed
             m.run f, m.dest(f), (err) ->
-              return console.log("[ERROR]", f, err) if err
-              updateMtime f, (() -> console.log "finished", f)
+              return innerCb(err) if err
+              updateMtime f, (err) ->
+                console.log "finished", f
+                innerCb(err)
           else
             console.log "skipping", f
+            innerCb(null)
+
+      async.forEach files, processFile, cb
+
+  async.forEachSeries _mappings, processMapping, (err) ->
+    return console.log("[ERROR]", err) if err
+    console.log "build complete"
