@@ -1,0 +1,12 @@
+CoffeeScript = require "coffee-script"
+
+# build target for coffeescript files
+map "src/**/*.coffee",
+    (src) -> src.replace(/^src\/(.+)\.coffee$/, "lib/pie/$1.js"),
+    (src, dest, cb) ->
+      console.log "compiling coffee", src, dest
+      fs.readFile src, (err, code) ->
+        return cb(err) if err
+        res = CoffeeScript.compile(code.toString(), {})
+        fs.mkdirSync path.dirname(dest), 0o0755, true
+        fs.writeFile dest, res, cb

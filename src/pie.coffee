@@ -10,7 +10,17 @@ _mappings = []
 _mtimes = null
 
 load = (cb) ->
-  _mtimes = nStore.new(".pie.db", cb)
+  evaluatePiefile (err) ->
+    return cb(err) if err
+    _mtimes = nStore.new(".pie.db", cb)
+
+evaluatePiefile = (cb) ->
+  fs.readFile "Piefile", (err, code) ->
+    return cb("No Piefile found. Please create one :)") if err && err.code == "ENOENT"
+    return cb(err) if err
+    res = CoffeeScript.compile(code.toString(), {})
+    eval(res)
+    cb(null)
 
 map = (src, dest, run) ->
   _mappings.push { src: src, dest: dest, run: run }
@@ -34,18 +44,8 @@ hasChanged = (filename, cb) ->
     else
       cb(null, true)
 
-# build target for coffeescript files
-map "src/**/*.coffee",
-    (src) -> src.replace(/^src\/(.+)\.coffee$/, "lib/pie/$1.js"),
-    (src, dest, cb) ->
-      console.log "compiling coffee", src, dest
-      fs.readFile src, (err, code) ->
-        return cb(err) if err
-        res = CoffeeScript.compile(code.toString(), {})
-        fs.mkdirSync path.dirname(dest), 0o0755, true
-        fs.writeFile dest, res, cb
-
-load () ->
+load (err) ->
+  return console.log("[ERROR]", err) if err
   processMapping = (m, cb) ->
     console.log "running mapping", m
     glob m.src, {}, (err, files) ->
