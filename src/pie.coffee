@@ -27,8 +27,11 @@ evaluatePiefile = (cb) ->
     eval(res)
     cb(null)
 
-map = (src, dest, run) ->
-  _mappings.push { src: src, dest: dest, run: run }
+map = (src, dest, args...) ->
+  if args.length == 1
+    _mappings.push { src: src, dest: dest, run: args[0], options: {} }
+  else if args.length == 2
+    _mappings.push { src: src, dest: dest, run: args[1], options: args[0] }
 
 getMtime = (filename, cb) ->
   fs.stat filename, (err, stats) ->
@@ -49,46 +52,66 @@ hasChanged = (filename, cb) ->
     else
       cb(null, true)
 
-runMapping = (m, src, cb) ->
-  m.run src, m.dest(src), (err) ->
-    console.log(err) if err
-    return cb(err) if err
-    updateMtime src, (err) ->
-      console.log "finished", src
-      cb(err)
+processDest = (m, src) ->
+  if _.isFunction(m.dest)
+    m.dest(src)
+  else
+    m.dest
+
+runMapping = (m, files, cb) ->
+  console.log "running mapping", m
+  async.filter files, ((f, innerCb) -> hasChanged(f, (err, res) -> innerCb(!err && res))), (changedFiles) ->
+    unchangedFiles = _.without(files, changedFiles)
+
+    run = (src, innerCb) ->
+      m.run src, processDest(m, src), (err) ->
+        return innerCb(err) if err
+        innerCb(null)
+
+    if m.options.batch
+      console.log "batching"
+      if changedFiles.length > 0
+        run changedFiles, (err) ->
+          return cb(err) if err
+          async.forEach changedFiles, updateMtime, (err) ->
+            console.log "finished"
+            cb(err)
+      else
+        console.log "skipping all"
+        cb(null)
+    else
+      console.log "not batching"
+      #_.each unchangedFiles, (f) -> console.log("skipping #{f}")
+      if changedFiles.length > 0
+        x = (f, innerCb) ->
+          run f, (err) ->
+            return innerCb(err) if err
+            updateMtime(f, innerCb)
+        async.forEach changedFiles, x, cb
+      else
+        cb(null)
 
 startWatcher = () ->
-  console.log "starting watcher"
-  _watch = fsWatchTree.watchTree ".", { exclude: [".git", ".pie.db", "node_modules"] }, (event) ->
+  console.log "Starting watcher"
+  _watch = fsWatchTree.watchTree ".", { exclude: [".git", ".pie.db", "node_modules", "log", "tmp"] }, (event) ->
     console.log "got event", event
     unless event.isDelete()
       mappings = _.filter(_mappings, (m) -> minimatch(event.name, m.src, {}))
       console.log "applicable mappings", mappings
-      async.forEach mappings, ((m) -> runMapping(m, event.name, noop)), noop
+      async.forEach mappings, ((m) -> runMapping(m, [event.name], noop)), noop
 
 stopWatcher = () ->
   _watch.end()
 
 load (err) ->
   return console.log("[ERROR]", err) if err
+
   processMapping = (m, cb) ->
-    console.log "running mapping", m
     glob m.src, {}, (err, files) ->
       return cb(err) if err
-
-      console.log "found files", m.src, files
-      processFile = (f, innerCb) ->
-        hasChanged f, (err, changed) ->
-          return innerCb(err) if err
-          if changed
-            runMapping(m, f, innerCb)
-          else
-            console.log "skipping", f
-            innerCb(null)
-
-      async.forEach files, processFile, cb
+      runMapping(m, files, cb)
 
   async.forEachSeries _mappings, processMapping, (err) ->
     return console.log("[ERROR]", err) if err
-    console.log "build complete"
+    console.log "Build complete"
     startWatcher()
