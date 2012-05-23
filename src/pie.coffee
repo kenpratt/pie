@@ -3,11 +3,16 @@ path          = require "path"
 async         = require "async"
 CoffeeScript  = require "coffee-script"
 glob          = require "glob"
+minimatch     = require "minimatch"
+fsWatchTree   = require "fs-watch-tree"
 nStore        = require "nstore"
 _             = require "underscore"
 
 _mappings = []
 _mtimes = null
+_watch = null
+
+noop = () -> null
 
 load = (cb) ->
   evaluatePiefile (err) ->
@@ -44,6 +49,26 @@ hasChanged = (filename, cb) ->
     else
       cb(null, true)
 
+runMapping = (m, src, cb) ->
+  m.run src, m.dest(src), (err) ->
+    console.log(err) if err
+    return cb(err) if err
+    updateMtime src, (err) ->
+      console.log "finished", src
+      cb(err)
+
+startWatcher = () ->
+  console.log "starting watcher"
+  _watch = fsWatchTree.watchTree ".", { exclude: [".git", ".pie.db", "node_modules"] }, (event) ->
+    console.log "got event", event
+    unless event.isDelete()
+      mappings = _.filter(_mappings, (m) -> minimatch(event.name, m.src, {}))
+      console.log "applicable mappings", mappings
+      async.forEach mappings, ((m) -> runMapping(m, event.name, noop)), noop
+
+stopWatcher = () ->
+  _watch.end()
+
 load (err) ->
   return console.log("[ERROR]", err) if err
   processMapping = (m, cb) ->
@@ -56,11 +81,7 @@ load (err) ->
         hasChanged f, (err, changed) ->
           return innerCb(err) if err
           if changed
-            m.run f, m.dest(f), (err) ->
-              return innerCb(err) if err
-              updateMtime f, (err) ->
-                console.log "finished", f
-                innerCb(err)
+            runMapping(m, f, innerCb)
           else
             console.log "skipping", f
             innerCb(null)
@@ -70,3 +91,4 @@ load (err) ->
   async.forEachSeries _mappings, processMapping, (err) ->
     return console.log("[ERROR]", err) if err
     console.log "build complete"
+    startWatcher()

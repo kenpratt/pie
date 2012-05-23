@@ -7,6 +7,9 @@ map "src/**/*.coffee",
       console.log "compiling coffee", src, dest
       fs.readFile src, (err, code) ->
         return cb(err) if err
-        res = CoffeeScript.compile(code.toString(), {})
-        fs.mkdirSync path.dirname(dest), 0o0755, true
-        fs.writeFile dest, res, cb
+        try
+          res = CoffeeScript.compile(code.toString(), {})
+          fs.mkdirSync path.dirname(dest), 0o0755, true
+          fs.writeFile dest, res, cb
+        catch err
+          cb(err.message)
