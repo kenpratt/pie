@@ -1,10 +1,11 @@
 CoffeeScript = require "coffee-script"
 
 # build target for coffeescript files
-map "src/**/*.coffee",
+map "build_coffee",
+    "src/**/*.coffee",
     (src) -> src.replace(/^src\/(.+)\.coffee$/, "lib/pie/$1.js"),
     (src, dest, cb) ->
-      console.log "compiling coffee", src, dest
+      console.log "Compiling", src
       fs.readFile src, (err, code) ->
         return cb(err) if err
         try
