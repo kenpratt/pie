@@ -52,6 +52,22 @@ hasChanged = (filename, cb) ->
     else
       cb(null, true)
 
+globSrc = (m, cb) ->
+  if _.isString(m.src)
+    glob(m.src, cb)
+  else if _.isArray(m.src)
+    async.concat(m.src, glob, cb)
+  else
+    cb("mapping src must be string or array of strings")
+
+matchesSrc = (m, file) ->
+  if _.isString(m.src)
+    minimatch(file, m.src, {})
+  else if _.isArray(m.src)
+    _.any m.src, (s) -> minimatch(file, s, {})
+  else
+    throw "mapping src must be string or array of strings"
+
 processDest = (m, src) ->
   if _.isFunction(m.dest)
     m.dest(src)
@@ -96,7 +112,7 @@ startWatcher = () ->
   _watch = fsWatchTree.watchTree ".", { exclude: [".git", ".pie.db", "node_modules", "log", "tmp"] }, (event) ->
     console.log "got event", event
     unless event.isDelete()
-      mappings = _.filter(_mappings, (m) -> minimatch(event.name, m.src, {}))
+      mappings = _.filter(_mappings, (m) -> matchesSrc(m, event.name))
       console.log "applicable mappings", mappings
       async.forEach mappings, ((m) -> runMapping(m, [event.name], noop)), noop
 
@@ -107,7 +123,7 @@ load (err) ->
   return console.log("[ERROR]", err) if err
 
   processMapping = (m, cb) ->
-    glob m.src, {}, (err, files) ->
+    globSrc m, (err, files) ->
       return cb(err) if err
       runMapping(m, files, cb)
 
