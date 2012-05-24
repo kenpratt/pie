@@ -6,6 +6,7 @@ glob          = require "glob"
 minimatch     = require "minimatch"
 fsWatchTree   = require "fs-watch-tree"
 nStore        = require "nstore"
+growl         = require "growl"
 _             = require "underscore"
 
 
@@ -47,6 +48,7 @@ runAllMappings = (cb = noop) ->
   async.forEachSeries _mappings, ((m, innerCb) -> m.run(innerCb)), (err) ->
     return printErr(err) if err
     console.log "Build complete"
+    growl "Build complete"
 
 startWatcher = (cb = noop) ->
   console.log "Starting watcher"
@@ -116,6 +118,7 @@ class Mapping
       if @options.batch
         if changedFiles.length > 0
           @execFunc changedFiles, (err) =>
+            growl("#{@name}\n#{err}") if err
             return cb(err) if err
             async.forEach changedFiles, _.bind(@updateMtime, @), cb
         else
@@ -124,6 +127,7 @@ class Mapping
         if changedFiles.length > 0
           x = (f, innerCb) =>
             @execFunc f, (err) =>
+              growl("#{f}\n#{err}") if err
               return innerCb(err) if err
               @updateMtime(f, innerCb)
           async.forEach changedFiles, x, cb
