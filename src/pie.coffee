@@ -80,9 +80,10 @@ runMapping = (m, files, cb) ->
     unchangedFiles = _.without(files, changedFiles)
 
     run = (src, innerCb) ->
-      m.run src, processDest(m, src), (err) ->
-        return innerCb(err) if err
-        innerCb(null)
+      try
+        m.run(src, processDest(m, src), innerCb)
+      catch err
+        innerCb(err)
 
     if m.options.batch
       console.log "batching"
