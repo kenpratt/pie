@@ -42,7 +42,13 @@ printErr = (err) ->
     if err.stack?
       console.log(err.stack)
     else
-      console.log(err.toString())
+      console.log(shortErr(err))
+
+shortErr = (err) ->
+  if err.message?
+    err.message
+  else
+    err.toString()
 
 runAllMappings = (cb = noop) ->
   async.forEachSeries _mappings, ((m, innerCb) -> m.run(innerCb)), (err) ->
@@ -118,7 +124,7 @@ class Mapping
       if @options.batch
         if changedFiles.length > 0
           @execFunc changedFiles, (err) =>
-            growl("#{@name}\n#{err}") if err
+            growl("#{@name}\n#{shortErr(err)}") if err
             return cb(err) if err
             async.forEach changedFiles, _.bind(@updateMtime, @), cb
         else
@@ -127,7 +133,7 @@ class Mapping
         if changedFiles.length > 0
           x = (f, innerCb) =>
             @execFunc f, (err) =>
-              growl("#{f}\n#{err}") if err
+              growl("#{f}\n#{shortErr(err)}") if err
               return innerCb(err) if err
               @updateMtime(f, innerCb)
           async.forEach changedFiles, x, cb
