@@ -13,4 +13,4 @@ map "build_coffee",
           fs.mkdirSync path.dirname(dest), 0o0755, true
           fs.writeFile dest, res, cb
         catch err
-          cb(err.message)
+          cb(err)

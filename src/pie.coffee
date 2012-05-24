@@ -37,11 +37,15 @@ getMtime = (file, cb) ->
     cb(null, stats.mtime.getTime())
 
 printErr = (err) ->
-  console.log("[ERROR]", err) if err
+  if err
+    if err.stack?
+      console.log(err.stack)
+    else
+      console.log(err.toString())
 
 runAllMappings = (cb = noop) ->
   async.forEachSeries _mappings, ((m, innerCb) -> m.run(innerCb)), (err) ->
-    return console.log("[ERROR]", err) if err
+    return printErr(err) if err
     console.log "Build complete"
 
 startWatcher = (cb = noop) ->
