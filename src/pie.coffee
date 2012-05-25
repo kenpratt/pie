@@ -10,6 +10,7 @@ growl         = require "growl"
 _             = require "underscore"
 
 
+_tasks = {}
 _mappings = []
 _db = null
 _watch = null
@@ -18,11 +19,19 @@ _watch = null
 exports.run = () ->
   load (err) ->
     return printErr(err) if err
-    runAllMappings(printErr)
+    target = process.argv[2] || "build"
+    invoke target, (err) ->
+      if err
+       growl("Piefile\n#{shortErr(err)}")
+       printErr(err)
 
 noop = () -> null
 
 load = (cb) ->
+  # define a few default tasks
+  task "build", "Build everything! (run all mappings, in the order defined)", (cb) ->
+    runAllMappings(cb)
+
   evaluatePiefile (err) ->
     return cb(err) if err
     _db = nStore.new(".pie.db", cb)
@@ -38,10 +47,25 @@ evaluatePiefile = (cb) ->
       growl("Piefile\n#{shortErr(err)}")
       printErr(err)
 
-map = (args...) ->
-  _mappings.push(new Mapping(args...))
+task = (name, args...) ->
+  _tasks[name] = new Task(name, args...)
 
-_.extend(global, { map: map })
+invoke = (name, cb) ->
+  if _.isArray(name)
+    async.forEachSeries(name, invoke, cb)
+  else if t = _tasks[name]
+    t.run(cb)
+  else
+    cb("No task named \"#{name}\" found")
+
+map = (name, args...) ->
+  m = new Mapping(name, args...)
+  _mappings.push(m)
+  task name, "Run #{name}", (cb) -> m.run(cb)
+
+defineDefaultTasks = () ->
+
+_.extend(global, { task: task, invoke: invoke, map: map })
 
 getMtime = (file, cb) ->
   fs.stat file, (err, stats) ->
@@ -78,6 +102,19 @@ startWatcher = (cb = noop) ->
 
 stopWatcher = () ->
   _watch.end()
+
+
+# just a lil' bit o' code
+class Task
+  constructor: (@name, @dest, @func) ->
+
+  run: (cb) ->
+    try
+      @func(cb)
+    catch err
+      growl "#{@name}\n#{err}"
+      cb(err)
+
 
 # represents a mapping / build target
 # stores mtimes of source files so it can be smart later. mtimes are stored scoped
