@@ -8,10 +8,10 @@ map "build_coffee",
     (src) -> src.replace(/^src\/(.+)\.coffee$/, "lib/pie/$1.js"),
     (src, dest, cb) ->
       console.log "Compiling", src
-      fs.readFile src, (err, code) ->
+      fs.readFile src, "utf-8", (err, code) ->
         return cb(err) if err
         try
-          res = CoffeeScript.compile(code.toString(), {})
+          res = CoffeeScript.compile(code, {})
           fs.mkdirSync path.dirname(dest), 0o0755, true
           fs.writeFile dest, res, cb
         catch err
