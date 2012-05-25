@@ -14,6 +14,12 @@ _mappings = []
 _db = null
 _watch = null
 
+
+exports.run = () ->
+  load (err) ->
+    return printErr(err) if err
+    runAllMappings(printErr)
+
 noop = () -> null
 
 load = (cb) ->
@@ -25,12 +31,17 @@ evaluatePiefile = (cb) ->
   fs.readFile "Piefile", (err, code) ->
     return cb("No Piefile found. Please create one :)") if err && err.code == "ENOENT"
     return cb(err) if err
-    res = CoffeeScript.compile(code.toString(), {})
-    eval(res)
-    cb(null)
+    try
+      CoffeeScript.run(code.toString(), { filename: "Piefile" })
+      cb(null)
+    catch err
+      growl("Piefile\n#{shortErr(err)}")
+      printErr(err)
 
 map = (args...) ->
   _mappings.push(new Mapping(args...))
+
+_.extend(global, { map: map })
 
 getMtime = (file, cb) ->
   fs.stat file, (err, stats) ->
@@ -67,7 +78,6 @@ startWatcher = (cb = noop) ->
 
 stopWatcher = () ->
   _watch.end()
-
 
 # represents a mapping / build target
 # stores mtimes of source files so it can be smart later. mtimes are stored scoped
@@ -146,9 +156,3 @@ class Mapping
       @func(src, dest, cb)
     catch err
       cb(err)
-
-
-# do stuff on run
-load (err) ->
-  return printErr(err) if err
-  runAllMappings(printErr)

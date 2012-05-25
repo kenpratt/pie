@@ -1,3 +1,5 @@
+fs           = require "node-fs"
+path         = require "path"
 CoffeeScript = require "coffee-script"
 
 # build target for coffeescript files

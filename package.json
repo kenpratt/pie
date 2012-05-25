@@ -15,6 +15,9 @@
     "lib": "./lib/pie"
   },
   "main": "./lib/pie/pie",
+  "bin":          {
+    "pie":       "./bin/pie"
+  },
   "homepage":     "https://github.com/kenpratt/pie",
   "bugs":         "https://github.com/kenpratt/pie/issues",
   "repository":   {
