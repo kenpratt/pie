@@ -32,6 +32,12 @@ load = (cb) ->
   task "build", "Build everything! (run all mappings, in the order defined)", (cb) ->
     runAllMappings(cb)
 
+  task "watch", "Run a build and then start watching the filesystem for changes and triggering mappings as necessary", (cb) ->
+    invoke "build", (err) ->
+      return cb(err) if err
+      startWatcher(cb)
+
+  # slurp up the Piefile (can override the default tasks if it wants)
   evaluatePiefile (err) ->
     return cb(err) if err
     _db = nStore.new(".pie.db", cb)
@@ -85,23 +91,29 @@ shortErr = (err) ->
   else
     err.toString()
 
-runAllMappings = (cb = noop) ->
+runAllMappings = (cb) ->
   async.forEachSeries _mappings, ((m, innerCb) -> m.run(innerCb)), (err) ->
-    return printErr(err) if err
+    return cb(err) if err
     console.log "Build complete"
     growl "Build complete"
+    cb(null)
 
-startWatcher = (cb = noop) ->
+startWatcher = (cb) ->
   console.log "Starting watcher"
-  _watch = fsWatchTree.watchTree ".", { exclude: [".git", ".pie.db", "node_modules", "log", "tmp"] }, (event) ->
-    console.log "Got event", event
-    unless event.isDelete()
-      mappings = _.filter(_mappings, (m) -> m.matchesSrc(event.name))
-      console.log "Applicable mappings", _.map(mappings, (m) -> m.name)
-      async.forEach mappings, ((m) -> m.runOnFiles([event.name], printErr)), printErr
+  _watch = fsWatchTree.watchTree ".",
+                                 { exclude: [".git", ".pie.db", "node_modules", "log", "tmp"] },
+                                 watchEvent
+  cb(null)
 
 stopWatcher = () ->
   _watch.end()
+
+watchEvent = (event) ->
+  console.log "Got event", event
+  unless event.isDelete()
+    mappings = _.filter(_mappings, (m) -> m.matchesSrc(event.name))
+    console.log "Applicable mappings", _.map(mappings, (m) -> m.name)
+    async.forEach mappings, ((m) -> m.runOnFiles([event.name], printErr)), printErr
 
 
 # just a lil' bit o' code
