@@ -1,5 +1,6 @@
 fs            = require "node-fs"
 path          = require "path"
+util          = require "util"
 async         = require "async"
 CoffeeScript  = require "coffee-script"
 glob          = require "glob"
@@ -8,6 +9,7 @@ fsWatchTree   = require "fs-watch-tree"
 nStore        = require "nstore"
 growl         = require "growl"
 _             = require "underscore"
+_.mixin(require("underscore.string"))
 
 # load cake opt parser from CoffeeScript
 rootDir = path.normalize(path.join(path.dirname(fs.realpathSync(__filename)), "../.."))
@@ -28,6 +30,7 @@ exports.run = () ->
     parser = new optparse.OptionParser(_switches)
     options = parser.parse(process.argv[2..])
     targets = options.arguments
+    targets.push("list_tasks") if options.tasks
     targets.push("build") if targets.length == 0
     invoke targets, options, (err) ->
       if err
@@ -37,6 +40,15 @@ exports.run = () ->
 # bootstrap
 load = (cb) ->
   option "-T", "--tasks", "List tasks"
+
+  task "list_tasks", "Print out a list of tasks", (options, cb) ->
+    _.each _.sortBy(_tasks, (t) -> t.name),
+           (t) -> console.log _.sprintf("%-30s %s", "pie #{t.name}", t.desc)
+    console.log ""
+    _.each _.sortBy(_switches, (s) -> s[0]),
+           (s) -> console.log _.sprintf("%-30s %s", "  #{s[0]}, #{s[1]}", s[2])
+    console.log ""
+    cb(null)
 
   # define a few default tasks
   task "build", "Build everything! (run all mappings, in the order defined)", runAllMappings
@@ -130,7 +142,7 @@ watchEvent = (event) ->
 
 # just a lil' bit o' code
 class Task
-  constructor: (@name, @dest, @func) ->
+  constructor: (@name, @desc, @func) ->
 
   run: (options, cb) ->
     try
