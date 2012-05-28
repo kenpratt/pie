@@ -9,33 +9,42 @@ nStore        = require "nstore"
 growl         = require "growl"
 _             = require "underscore"
 
+# load cake opt parser from CoffeeScript
+rootDir = path.normalize(path.join(path.dirname(fs.realpathSync(__filename)), "../.."))
+optparse = require path.join(rootDir, "node_modules/coffee-script/lib/coffee-script/optparse.js")
 
+
+_switches = []
 _tasks = {}
 _mappings = []
 _db = null
 _watch = null
 
 
+# the entry point (called from bin/pie)
 exports.run = () ->
   load (err) ->
     return printErr(err) if err
-    target = process.argv[2] || "build"
-    invoke target, (err) ->
+    parser = new optparse.OptionParser(_switches)
+    options = parser.parse(process.argv[2..])
+    targets = options.arguments
+    targets.push("build") if targets.length == 0
+    invoke targets, options, (err) ->
       if err
-       growl("Piefile\n#{shortErr(err)}")
-       printErr(err)
+        growl("Piefile\n#{shortErr(err)}")
+        printErr(err)
 
-noop = () -> null
-
+# bootstrap
 load = (cb) ->
-  # define a few default tasks
-  task "build", "Build everything! (run all mappings, in the order defined)", (cb) ->
-    runAllMappings(cb)
+  _switches.push ["-T", "--tasks", "List tasks"]
 
-  task "watch", "Run a build and then start watching the filesystem for changes and triggering mappings as necessary", (cb) ->
-    invoke "build", (err) ->
+  # define a few default tasks
+  task "build", "Build everything! (run all mappings, in the order defined)", runAllMappings
+
+  task "watch", "Run a build, then start watching the filesystem for changes, triggering mappings as necessary", (options, cb) ->
+    invoke "build", options, (err) ->
       return cb(err) if err
-      startWatcher(cb)
+      startWatcher(options, cb)
 
   # slurp up the Piefile (can override the default tasks if it wants)
   evaluatePiefile (err) ->
@@ -56,18 +65,18 @@ evaluatePiefile = (cb) ->
 task = (name, args...) ->
   _tasks[name] = new Task(name, args...)
 
-invoke = (name, cb) ->
+invoke = (name, options, cb) ->
   if _.isArray(name)
-    async.forEachSeries(name, invoke, cb)
+    async.forEachSeries(name, ((name, innerCb) -> invoke(name, options, innerCb)), cb)
   else if t = _tasks[name]
-    t.run(cb)
+    t.run(options, cb)
   else
     cb("No task named \"#{name}\" found")
 
 map = (name, args...) ->
   m = new Mapping(name, args...)
   _mappings.push(m)
-  task name, "Run #{name}", (cb) -> m.run(cb)
+  task name, "Run #{name}", (options, cb) -> m.run(options, cb)
 
 defineDefaultTasks = () ->
 
@@ -91,14 +100,14 @@ shortErr = (err) ->
   else
     err.toString()
 
-runAllMappings = (cb) ->
-  async.forEachSeries _mappings, ((m, innerCb) -> m.run(innerCb)), (err) ->
+runAllMappings = (options, cb) ->
+  async.forEachSeries _mappings, ((m, innerCb) -> m.run(options, innerCb)), (err) ->
     return cb(err) if err
     console.log "Build complete"
     growl "Build complete"
     cb(null)
 
-startWatcher = (cb) ->
+startWatcher = (options, cb) ->
   console.log "Starting watcher"
   _watch = fsWatchTree.watchTree ".",
                                  { exclude: [".git", ".pie.db", "node_modules", "log", "tmp"] },
@@ -120,9 +129,9 @@ watchEvent = (event) ->
 class Task
   constructor: (@name, @dest, @func) ->
 
-  run: (cb) ->
+  run: (options, cb) ->
     try
-      @func(cb)
+      @func(options, cb)
     catch err
       growl "#{@name}\n#{err}"
       cb(err)
@@ -170,19 +179,19 @@ class Mapping
     else
       throw "mapping src must be string or array of strings"
 
-  run: (cb) ->
+  run: (options, cb) ->
     @findSrcFiles (err, files) =>
       return cb(err) if err
-      @runOnFiles(files, cb)
+      @runOnFiles(files, options, cb)
 
-  runOnFiles: (files, cb) ->
+  runOnFiles: (files, options, cb) ->
     console.log "Running", @name, "on", files.length, "files"
     async.filter files, _.bind(@hasChanged, @), (changedFiles) =>
       unchangedFiles = _.without(files, changedFiles)
 
       if @options.batch
         if changedFiles.length > 0
-          @execFunc changedFiles, (err) =>
+          @execFunc changedFiles, options, (err) =>
             growl("#{@name}\n#{shortErr(err)}") if err
             return cb(err) if err
             async.forEach changedFiles, _.bind(@updateMtime, @), cb
@@ -191,7 +200,7 @@ class Mapping
       else
         if changedFiles.length > 0
           x = (f, innerCb) =>
-            @execFunc f, (err) =>
+            @execFunc f, options, (err) =>
               growl("#{f}\n#{shortErr(err)}") if err
               return innerCb(err) if err
               @updateMtime(f, innerCb)
@@ -199,9 +208,9 @@ class Mapping
         else
           cb(null)
 
-  execFunc: (src, cb) ->
+  execFunc: (src, options, cb) ->
     try
       dest = if _.isFunction(@dest) then @dest(src) else @dest
-      @func(src, dest, cb)
+      @func(src, dest, options, cb)
     catch err
       cb(err)

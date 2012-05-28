@@ -6,7 +6,7 @@ CoffeeScript = require "coffee-script"
 map "build_coffee",
     "src/**/*.coffee",
     (src) -> src.replace(/^src\/(.+)\.coffee$/, "lib/pie/$1.js"),
-    (src, dest, cb) ->
+    (src, dest, options, cb) ->
       console.log "Compiling", src
       fs.readFile src, "utf-8", (err, code) ->
         return cb(err) if err
