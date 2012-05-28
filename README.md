@@ -14,12 +14,13 @@ Features
 * Customizable command-line switches
 * Fast in-VM compilation of CoffeeScript, LESS, andHandlebars files (and very easy to add new ones)
 * Very fast for running ```git bisect`` on large projects due to fast incremental builds
+* Growl notifications for build completion & errors
 
 Installation
 ------------
 
 ```
-$ npm install -g pie
+$ npm install pie -g
 ```
 
 Usage

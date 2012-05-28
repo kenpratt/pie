@@ -1,0 +1,7 @@
+== 0.1.0 / 2012-05-28
+  * Inaugural Release
+    * DSL for defining tasks, mappings, and command-line switches
+    * Dependency-tracking (mtime database)
+    * Auto-watch w/ smart recalculation
+    * CoffeeScript, LESS, Handlebars copilers
+    * Growl notifications
