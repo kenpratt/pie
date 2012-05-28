@@ -36,7 +36,7 @@ exports.run = () ->
 
 # bootstrap
 load = (cb) ->
-  _switches.push ["-T", "--tasks", "List tasks"]
+  option "-T", "--tasks", "List tasks"
 
   # define a few default tasks
   task "build", "Build everything! (run all mappings, in the order defined)", runAllMappings
@@ -63,6 +63,9 @@ evaluatePiefile = (cb) ->
       growl("Piefile\n#{shortErr(err)}")
       printErr(err)
 
+option = (args...) ->
+  _switches.push(args)
+
 task = (name, args...) ->
   _tasks[name] = new Task(name, args...)
 
@@ -81,7 +84,7 @@ map = (name, args...) ->
 
 defineDefaultTasks = () ->
 
-_.extend(global, { task: task, invoke: invoke, map: map })
+_.extend(global, { option: option, task: task, invoke: invoke, map: map })
 
 getMtime = (file, cb) ->
   fs.stat file, (err, stats) ->
