@@ -122,11 +122,10 @@ stopWatcher = () ->
   _watch.end()
 
 watchEvent = (event) ->
-  console.log "Got event", event
   unless event.isDelete()
+    console.log event.name, "changed"
     mappings = _.filter(_mappings, (m) -> m.matchesSrc(event.name))
-    console.log "Applicable mappings", _.map(mappings, (m) -> m.name)
-    async.forEach mappings, ((m) -> m.runOnFiles([event.name], printErr)), printErr
+    async.forEach mappings, ((m) -> m.runOnFiles([event.name], {}, printErr)), printErr
 
 
 # just a lil' bit o' code
