@@ -1,18 +1,19 @@
 pie
 ===
 
-```pie``` is a build tool for [Node.js](http://nodejs.org/)-based projects. It is similar to [```cake```](http://coffeescript.org/#cake), but adds *smart dependency tracking* so only the exact files that need to get rebuilt will be (like good old [```make```](http://www.gnu.org/software/make/).
+```pie``` is a build tool for [Node.js](http://nodejs.org/)-based projects. It's similar to [Cake](http://coffeescript.org/#cake), but adds **smart dependency tracking** so only the files that need to get rebuilt will be (like good old [Make](http://www.gnu.org/software/make/)).
 
-If you're experiencing pain using ```cake``` or ```rake``` or even ```make``` for large JS projects, ```pie``` may just be your answer.
+If you're experiencing pain using Cake or Rake or even Make for large JS projects, ```pie``` may just be your answer.
 
 Features
 --------
 
-* Flexible DSL for defining exactly the tasks and build targets you need (loose superset of ```cake``` syntax)
+* Flexible DSL for defining exactly the tasks and build targets you need (loose superset of Cake syntax)
 * Smart dependecy tracking for _fast_ incremental builds
 * Built-in auto-watch with smart recalculation of changes
 * Customizable command-line switches
 * Fast in-VM compilation of CoffeeScript, LESS, andHandlebars files (and very easy to add new ones)
+* Very fast for running ```git bisect`` on large projects due to fast incremental builds
 
 Installation
 ------------
