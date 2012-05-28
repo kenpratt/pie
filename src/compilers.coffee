@@ -40,7 +40,7 @@ exports.handlebars = (src, dest, options, cb) ->
     try
       res = Handlebars.precompile(code, {})
       res = "define([], function() { return Handlebars.template(\n" + res + "); });\n"
-      ensureDirExists(dest)
+      fs.mkdirSync path.dirname(dest), 0o0755, true
       fs.writeFile dest, res, cb
     catch err
       cb(err)
