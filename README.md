@@ -48,6 +48,18 @@ If you get ```Error: watch EMFILE```, try increasing your open file discriptor l
 $ ulimit -n 1024
 ```
 
+### Run a clean build
+
+```
+$ pie clean build
+```
+
+### Just clean
+
+```
+$ pie clean
+```
+
 ### List tasks
 
 ```$ pie -T```
