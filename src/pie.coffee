@@ -8,6 +8,7 @@ minimatch     = require "minimatch"
 fsWatchTree   = require "fs-watch-tree"
 nStore        = require "nstore"
 growl         = require "growl"
+compilers     = require "./compilers"
 _             = require "underscore"
 _.mixin(require("underscore.string"))
 
@@ -96,7 +97,7 @@ map = (name, args...) ->
 
 defineDefaultTasks = () ->
 
-_.extend(global, { option: option, task: task, invoke: invoke, map: map })
+_.extend(global, { option: option, task: task, invoke: invoke, map: map, compilers: compilers })
 
 getMtime = (file, cb) ->
   fs.stat file, (err, stats) ->
