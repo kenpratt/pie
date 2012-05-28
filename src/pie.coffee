@@ -49,7 +49,8 @@ load = (cb) ->
   # slurp up the Piefile (can override the default tasks if it wants)
   evaluatePiefile (err) ->
     return cb(err) if err
-    _db = nStore.new(".pie.db", cb)
+    nStoreAlreadyFiredCallback = false
+    _db = nStore.new(".pie.db", ((err) -> if !nStoreAlreadyFiredCallback then nStoreAlreadyFiredCallback = true; cb(err)))
 
 evaluatePiefile = (cb) ->
   fs.readFile "Piefile", (err, code) ->
