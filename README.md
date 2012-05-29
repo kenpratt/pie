@@ -1,5 +1,15 @@
-pie
-===
+<pre>           /$$          
+          |__/          
+  /$$$$$$  /$$  /$$$$$$ 
+ /$$__  $$| $$ /$$__  $$
+| $$  \ $$| $$| $$$$$$$$
+| $$  | $$| $$| $$_____/
+| $$$$$$$/| $$|  $$$$$$$
+| $$____/ |__/ \_______/
+| $$                    
+| $$                    
+|__/                    
+</pre>
 
 ```pie``` is a build tool for [Node.js](http://nodejs.org/)-based projects. It's similar to [Cake](http://coffeescript.org/#cake), but adds **smart dependency tracking** so only the files that need to get rebuilt will be (like good old [Make](http://www.gnu.org/software/make/)).
 
