@@ -1,0 +1,4 @@
+#!/bin/sh
+
+# Build pie using the CoffeeScript compiler (since you can't build pie with pie if you don't have any pie yet)
+$0/../../node_modules/.bin/coffee -o lib/pie -c src

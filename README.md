@@ -13,7 +13,7 @@ Features
 * Built-in auto-watch with smart recalculation of changes
 * Customizable command-line switches
 * Fast in-VM compilation of CoffeeScript, LESS, andHandlebars files (and very easy to add new ones)
-* Very fast for running ```git bisect`` on large projects due to fast incremental builds
+* Very fast for running ```git bisect``` on large projects due to fast incremental builds
 * Growl notifications for build completion & errors
 
 Installation
@@ -62,7 +62,38 @@ $ pie clean
 
 ### List tasks
 
-```$ pie -T```
+```
+$ pie -T
+```
+
+Developing
+----------
+
+### Grab the sources
+
+```
+$ git clone https://github.com/kenpratt/pie.git
+$ cd pie
+```
+
+### Install dependencies
+
+```
+$ npm install
+```
+
+### Bootstrap pie
+
+```
+$ ./bin/bootstrap
+```
+
+### Try it out
+
+```
+$ pie
+$ pie -T
+```
 
 Copyright
 ---------
