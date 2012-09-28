@@ -1,7 +1,10 @@
+== 0.1.1 / 2012-09-28
+  * Minor Enhancements
+    * Made watch more stable on large codebases by being more granular about what is watched.
 == 0.1.0 / 2012-05-28
   * Inaugural Release
-    * DSL for defining tasks, mappings, and command-line switches
-    * Dependency-tracking (mtime database)
-    * Auto-watch w/ smart recalculation
-    * CoffeeScript, LESS, Handlebars copilers
-    * Growl notifications
+    * DSL for defining tasks, mappings, and command-line switches.
+    * Dependency-tracking (mtime database).
+    * Auto-watch w/ smart recalculation.
+    * CoffeeScript, LESS, Handlebars compilers.
+    * Growl notifications.

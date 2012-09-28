@@ -1,14 +1,14 @@
-<pre>           /$$          
-          |__/          
-  /$$$$$$  /$$  /$$$$$$ 
+<pre>           /$$
+          |__/
+  /$$$$$$  /$$  /$$$$$$
  /$$__  $$| $$ /$$__  $$
 | $$  \ $$| $$| $$$$$$$$
 | $$  | $$| $$| $$_____/
 | $$$$$$$/| $$|  $$$$$$$
 | $$____/ |__/ \_______/
-| $$                    
-| $$                    
-|__/                    
+| $$
+| $$
+|__/
 </pre>
 
 ```pie``` is a build tool for [Node.js](http://nodejs.org/)-based projects. It's similar to [Cake](http://coffeescript.org/#cake), but adds **smart dependency tracking** so only the files that need to get rebuilt will be (like good old [Make](http://www.gnu.org/software/make/)).
@@ -22,7 +22,7 @@ Features
 * Smart dependecy tracking for _fast_ incremental builds
 * Built-in auto-watch with smart recalculation of changes
 * Customizable command-line switches
-* Fast in-VM compilation of CoffeeScript, LESS, andHandlebars files (and very easy to add new ones)
+* Fast in-VM compilation of CoffeeScript, LESS, and Handlebars files (and very easy to add new ones)
 * Very fast for running ```git bisect``` on large projects due to fast incremental builds
 * Growl notifications for build completion & errors
 

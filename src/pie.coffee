@@ -21,7 +21,7 @@ _switches = []
 _tasks = {}
 _mappings = []
 _db = null
-_watch = null
+_watches = {}
 
 
 # the entry point (called from bin/pie)
@@ -142,14 +142,29 @@ cleanAllMappings = (options, cb) ->
     async.forEach _.uniq(_.flatten(files)), rm, cb
 
 startWatcher = (options, cb) ->
+  stopWatcher()
+
+  # calculate watch targets
+  toWatch = _.uniq(_.map(_.flatten(_.map(_mappings, (m) -> m.src)), (p) -> p.replace(/\*\*.*$/, '').replace(/\*\..+$/, '').replace(/\/$/, '')).sort())
+  toWatch = _.filter(toWatch, (s) -> _.all(toWatch, (t) -> s == t or s.indexOf(t) != 0))
+
+  startWatching = (path, innerCb) ->
+    fs.stat path, (err, stats) ->
+      return innerCb(err) if err
+      if stats.isFile()
+        console.log "Watching", path
+        _watches[path] = fileWatcher(path, watchEvent)
+      else if stats.isDirectory()
+        console.log "Watching", path
+        _watches[path] = fsWatchTree.watchTree(path, { exclude: [/\.pie\.db/, /\.DS_Store/, /node_modules/, /log/, /tmp/] }, watchEvent)
+      else
+        innerCb("Don't know how to watch #{path}, as it isn't a file or a directory")
+
   console.log "Starting watcher"
-  _watch = fsWatchTree.watchTree ".",
-                                 { exclude: [".git", ".pie.db", "node_modules", "log", "tmp"] },
-                                 watchEvent
-  cb(null)
+  async.forEach(toWatch, startWatching, cb)
 
 stopWatcher = () ->
-  _watch.end()
+  _.each _watches, (w, k) -> w.end()
 
 watchEvent = (event) ->
   unless event.isDelete()
@@ -157,6 +172,18 @@ watchEvent = (event) ->
     mappings = _.filter(_mappings, (m) -> m.matchesSrc(event.name))
     async.forEach mappings, ((m) -> m.runOnFiles([event.name], {}, printErr)), printErr
 
+# watch a single file, but call handler with event like fs-watch-tree
+fileWatcher = (path, handler) ->
+  w = fs.watch path, (event) ->
+    if event == "change"
+      handler {
+        isMkdir: () -> false
+        isDelete: () -> false
+        isModify: () -> true
+        isDirectory: () -> false
+        name: path
+      }
+  { end: () -> w.close() }
 
 # just a lil' bit o' code
 class Task
