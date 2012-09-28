@@ -9,12 +9,9 @@ fsWatchTree   = require "fs-watch-tree"
 nStore        = require "nstore"
 growl         = require "growl"
 compilers     = require "./compilers"
+optparse      = require "./optparse"
 _             = require "underscore"
 _.mixin(require("underscore.string"))
-
-# load cake opt parser from CoffeeScript
-rootDir = path.normalize(path.join(path.dirname(fs.realpathSync(__filename)), "../.."))
-optparse = require path.join(rootDir, "node_modules/coffee-script/lib/coffee-script/optparse.js")
 
 
 _switches = []
