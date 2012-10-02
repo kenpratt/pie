@@ -3,7 +3,7 @@
   "description":  "The smarter JS build tool",
   "keywords":     ["javascript", "coffeescript", "build", "cake", "make", "dependencies"],
   "author":       "Ken Pratt",
-  "version":      "0.1.2",
+  "version":      "0.1.3",
   "licenses":     [{
     "type":       "MIT",
     "url":        "https://raw.github.com/kenpratt/pie/master/LICENSE"
