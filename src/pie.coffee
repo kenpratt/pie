@@ -153,7 +153,7 @@ startWatcher = (options, cb) ->
         _watches[path] = fileWatcher(path, watchEvent)
       else if stats.isDirectory()
         console.log "Watching", path
-        _watches[path] = fsWatchTree.watchTree(path, { exclude: [/\.pie\.db/, /\.DS_Store/, /node_modules/, /log/, /tmp/, /~$/, /\#$/, /\.\#.+$/, /\.swp$/, /\.lock$/, /~\.nib$/] }, watchEvent)
+        _watches[path] = fsWatchTree.watchTree(path, { exclude: [/\.pie\.db$/, /\.DS_Store$/, /^node_modules/, /^log/, /^tmp/, /~$/, /\#$/, /\.\#.+$/, /\.swp$/, /\.lock$/, /~\.nib$/] }, watchEvent)
       else
         innerCb("Don't know how to watch #{path}, as it isn't a file or a directory")
 
