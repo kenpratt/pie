@@ -17,8 +17,8 @@ _.mixin(require("underscore.string"))
 _switches = []
 _tasks = {}
 _mappings = []
+_mappingsWatcher = null
 _db = null
-_watches = {}
 
 
 # the entry point (called from bin/pie)
@@ -56,7 +56,7 @@ load = (cb) ->
   task "watch", "Run a build, then start watching the filesystem for changes, triggering mappings as necessary", (options, cb) ->
     invoke "build", options, (err) ->
       return cb(err) if err
-      startWatcher(options, cb)
+      watchMappings(options, cb)
 
   # slurp up the Piefile (can override the default tasks if it wants)
   evaluatePiefile (err) ->
@@ -94,9 +94,12 @@ map = (name, args...) ->
   _mappings.push(m)
   task name, "Run #{name}", (options, cb) -> m.run(options, cb)
 
-defineDefaultTasks = () ->
+watch = (paths, options, eventHandler, cb = noop) ->
+  w = new Watcher(paths, options, eventHandler)
+  w.start (err) -> cb(err, w)
 
-_.extend(global, { option: option, task: task, invoke: invoke, map: map, compilers: compilers })
+# exports, available in global namespace of Piefile
+_.extend(global, { option: option, task: task, invoke: invoke, map: map, compilers: compilers, watch: watch })
 
 getMtime = (file, cb) ->
   fs.stat file, (err, stats) ->
@@ -138,49 +141,24 @@ cleanAllMappings = (options, cb) ->
     files.push ".pie.db"
     async.forEach _.uniq(_.flatten(files)), rm, cb
 
-startWatcher = (options, cb) ->
-  stopWatcher()
+watchMappings = (options, cb) ->
+  _mappingsWatcher.stop() if _mappingsWatcher
 
   # calculate watch targets
   toWatch = _.uniq(_.map(_.flatten(_.map(_mappings, (m) -> m.src)), (p) -> p.replace(/\*\*.*$/, '').replace(/\*\..+$/, '').replace(/\/$/, '')).sort())
   toWatch = _.filter(toWatch, (s) -> _.all(toWatch, (t) -> s == t or s.indexOf(t) != 0))
 
-  startWatching = (path, innerCb) ->
-    fs.stat path, (err, stats) ->
-      return innerCb(err) if err
-      if stats.isFile()
-        console.log "Watching", path
-        _watches[path] = fileWatcher(path, watchEvent)
-      else if stats.isDirectory()
-        console.log "Watching", path
-        _watches[path] = fsWatchTree.watchTree(path, { exclude: [/\.pie\.db$/, /\.DS_Store$/, /^node_modules/, /^log/, /^tmp/, /~$/, /\#$/, /\.\#.+$/, /\.swp$/, /\.lock$/, /~\.nib$/] }, watchEvent)
-      else
-        innerCb("Don't know how to watch #{path}, as it isn't a file or a directory")
-
   console.log "Starting watcher"
-  async.forEach(toWatch, startWatching, cb)
+  _mappingsWatcher = watch(toWatch, {}, handleMappingWatchEvent, cb)
 
-stopWatcher = () ->
-  _.each _watches, (w, k) -> w.end()
-
-watchEvent = (event) ->
+handleMappingWatchEvent = (event) ->
   unless event.isDelete()
     console.log event.name, "changed"
     mappings = _.filter(_mappings, (m) -> m.matchesSrc(event.name))
     async.forEach mappings, ((m) -> m.runOnFiles([event.name], {}, printErr)), printErr
 
-# watch a single file, but call handler with event like fs-watch-tree
-fileWatcher = (path, handler) ->
-  w = fs.watch path, (event) ->
-    if event == "change"
-      handler {
-        isMkdir: () -> false
-        isDelete: () -> false
-        isModify: () -> true
-        isDirectory: () -> false
-        name: path
-      }
-  { end: () -> w.close() }
+noop = () -> null
+
 
 # just a lil' bit o' code
 class Task
@@ -281,3 +259,53 @@ class Mapping
       @func(f, @calculateDest(f), options, cb)
     catch err
       cb(err)
+
+
+# watch one or more files or directory trees, and call eventHandler if anything
+# changes (or is added or removed)
+class Watcher
+  constructor: (@paths, @options, @eventHandler) ->
+    @watches = []
+    @options ||= {}
+    @options.exclude = (@options.exclude || []).concat(/\.pie\.db$/, /\.DS_Store$/, /(^|\/)node_modules($|\/)/, /(^|\/)log($|\/)/, /(^|\/)tmp($|\/)/, /~$/, /\#$/, /\.\#.+$/, /\.swp$/, /\.lock$/, /~\.nib$/)
+
+  start: (cb = noop) ->
+    if _.isArray(@paths)
+      async.forEachSeries(@paths, @watch, cb)
+    else
+      @watch(@paths, cb)
+
+  stop: (cb = noop) ->
+    _.each @watches, (w) -> w.end()
+    cb(null)
+
+  watch: (path, cb) =>
+    fs.stat path, (err, stats) =>
+      return cb(err) if err
+      if stats.isFile()
+        console.log "Watching", path
+        @watches.push @watchFile(path)
+        cb(null)
+      else if stats.isDirectory()
+        console.log "Watching", path
+        @watches.push @watchDir(path)
+        cb(null)
+      else
+        cb("Don't know how to watch #{path}, as it isn't a file or a directory")
+
+  # watch a directory tree
+  watchDir: (path) ->
+    fsWatchTree.watchTree(path, @options, @eventHandler)
+
+  # watch a single file, but call handler with event like fs-watch-tree
+  watchFile: (path) ->
+    w = fs.watch path, (event) =>
+      if event == "change"
+        @eventHandler {
+          isMkdir: () -> false
+          isDelete: () -> false
+          isModify: () -> true
+          isDirectory: () -> false
+          name: path
+        }
+    { end: () -> w.close() }
