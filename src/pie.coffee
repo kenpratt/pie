@@ -126,20 +126,20 @@ runAllMappings = (options, cb) ->
     growl "Build complete"
     cb(null)
 
-cleanAllMappings = (options, cb) ->
-  rm = (f, innerCb) ->
-    try
-      fs.unlink f, (err) ->
-        console.log(f, err) if err && err.code != "ENOENT"
-        innerCb(null)
-    catch err
+rm = (f, innerCb) ->
+  console.log "deleting", f
+  try
+    fs.unlink f, (err) ->
       console.log(f, err) if err && err.code != "ENOENT"
       innerCb(null)
+  catch err
+    console.log(f, err) if err && err.code != "ENOENT"
+    innerCb(null)
 
-  async.map _mappings, ((m, innerCb) -> m.outputFiles(innerCb)), (err, files) ->
+cleanAllMappings = (options, cb) ->
+  async.map _mappings, ((m, innerCb) -> m.clean(innerCb)), (err) ->
     return cb(err) if err
-    files.push ".pie.db"
-    async.forEach _.uniq(_.flatten(files)), rm, cb
+    rm ".pie.db", cb
 
 watchMappings = (options, cb) ->
   _mappingsWatcher.stop() if _mappingsWatcher
@@ -152,10 +152,19 @@ watchMappings = (options, cb) ->
   _mappingsWatcher = watch(toWatch, {}, handleMappingWatchEvent, cb)
 
 handleMappingWatchEvent = (event) ->
-  unless event.isDelete()
-    console.log event.name, "changed"
-    mappings = _.filter(_mappings, (m) -> m.matchesSrc(event.name))
-    async.forEach mappings, ((m) -> m.runOnFiles([event.name], {}, printErr)), printErr
+  path = event.name
+  console.log path, if event.isDelete() then "was deleted" else "changed"
+  mappings = _.filter(_mappings, (m) -> m.matchesSrc(path))
+
+  processMapping = (m, cb) ->
+    unless event.isDelete() and !m.batch
+      # run mapping on non-deletes, or if it's a deleted file in a batch mapping
+      m.runOnFiles([path], {}, cb)
+    else
+      # on a delete in non-batched mapping, delete the output file(s)
+      m.cleanForFiles([path], cb)
+
+  async.forEach mappings, processMapping, printErr
 
 noop = () -> null
 
@@ -183,13 +192,17 @@ class Mapping
     else if args.length == 2
       @func = args[1]
       @options = args[0]
+    @batch = @options.batch
 
-  updateMtime: (file, cb) ->
+  updateMtime: (file, cb) =>
     getMtime file, (err, mtime) =>
       return cb(err) if err
       _db.save("#{@name}:#{file}", mtime, cb)
 
-  hasChanged: (file, cb) ->
+  clearMtime: (file, cb) =>
+    _db.save("#{@name}:#{file}", null, cb)
+
+  hasChanged: (file, cb) =>
     _db.get "#{@name}:#{file}", (err, prev) ->
       if !err && prev
         getMtime file, (err, mtime) ->
@@ -206,7 +219,7 @@ class Mapping
     else
       cb("mapping src must be string or array of strings")
 
-  calculateDest: (f) ->
+  calculateDest: (f) =>
     if _.isFunction(@dest)
       @dest(f)
     else
@@ -215,7 +228,7 @@ class Mapping
   outputFiles: (cb) ->
     @findSrcFiles (err, files) =>
       return cb(err) if err
-      cb(null, _.uniq(_.flatten(_.map(files, _.bind(@calculateDest, @)))))
+      cb(null, _.uniq(_.flatten(_.map(files, @calculateDest))))
 
   matchesSrc: (file) ->
     if _.isString(@src)
@@ -232,15 +245,15 @@ class Mapping
 
   runOnFiles: (files, options, cb) ->
     console.log "Running", @name, "on", files.length, "files"
-    async.filter files, _.bind(@hasChanged, @), (changedFiles) =>
+    async.filter files, @hasChanged, (changedFiles) =>
       unchangedFiles = _.without(files, changedFiles)
 
-      if @options.batch
+      if @batch
         if changedFiles.length > 0
           @execFunc changedFiles, options, (err) =>
             growl("#{@name}\n#{shortErr(err)}") if err
             return cb(err) if err
-            async.forEach changedFiles, _.bind(@updateMtime, @), cb
+            async.forEach changedFiles, @updateMtime, cb
         else
           cb(null)
       else
@@ -259,6 +272,17 @@ class Mapping
       @func(f, @calculateDest(f), options, cb)
     catch err
       cb(err)
+
+  clean: (cb) ->
+    @findSrcFiles (err, files) =>
+      return cb(err) if err
+      @cleanForFiles(files, cb)
+
+  cleanForFiles: (srcFiles, cb) ->
+    async.forEach srcFiles, @clearMtime, (err) =>
+      return cb(err) if err
+      destFiles = _.uniq(_.flatten(_.map(srcFiles, @calculateDest)))
+      async.forEach destFiles, rm, cb
 
 
 # watch one or more files or directory trees, and call eventHandler if anything
@@ -299,13 +323,27 @@ class Watcher
 
   # watch a single file, but call handler with event like fs-watch-tree
   watchFile: (path) ->
-    w = fs.watch path, (event) =>
+    issueChange = () =>
+      @eventHandler
+        isMkdir: () -> false
+        isDelete: () -> false
+        isModify: () -> true
+        isDirectory: () -> false
+        name: path
+    issueDelete = () =>
+      @eventHandler
+        isMkdir: () -> false
+        isDelete: () -> true
+        isModify: () -> false
+        isDirectory: () -> false
+        name: path
+    w = fs.watch path, (event) ->
       if event == "change"
-        @eventHandler {
-          isMkdir: () -> false
-          isDelete: () -> false
-          isModify: () -> true
-          isDirectory: () -> false
-          name: path
-        }
+        issueChange()
+      else if event == "rename"
+        fs.exists path, (exists) =>
+          if exists
+            issueChange()
+          else
+            issueDelete()
     { end: () -> w.close() }

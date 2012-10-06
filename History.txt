@@ -1,3 +1,7 @@
+== 0.1.5 / 2012-10-04
+  * Minor Enhancements
+    * Generated files are now deleted when source files are removed or renamed.
+    * Batch operations are re-run when when source files are removed or renamed.
 == 0.1.4 / 2012-10-04
   * Minor Enhancements
     * Added watch function to Piefile so it can be used for custom watch functionality.
