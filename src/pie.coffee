@@ -11,7 +11,6 @@ growl         = require "growl"
 compilers     = require "./compilers"
 optparse      = require "./optparse"
 _             = require "underscore"
-_.mixin(require("underscore.string"))
 
 
 _switches = []
@@ -146,7 +145,7 @@ watchMappings = (options, cb) ->
 
   # calculate watch targets
   toWatch = _.uniq(_.map(_.flatten(_.map(_mappings, (m) -> m.src)), (p) -> p.replace(/\*\*.*$/, '').replace(/\*\..+$/, '').replace(/\/$/, '')).sort())
-  toWatch = _.filter(toWatch, (s) -> _.all(toWatch, (t) -> s == t or s.indexOf(t) != 0))
+  toWatch = _.filter(toWatch, (s) -> _.all(toWatch, (t) -> s == t or s.indexOf(t + "/") != 0))
 
   console.log "Starting watcher"
   _mappingsWatcher = watch(toWatch, {}, handleMappingWatchEvent, cb)
