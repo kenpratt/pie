@@ -60,8 +60,7 @@ load = (cb) ->
   # slurp up the Piefile (can override the default tasks if it wants)
   evaluatePiefile (err) ->
     return cb(err) if err
-    nStoreAlreadyFiredCallback = false
-    _db = nStore.new(".pie.db", ((err) -> if !nStoreAlreadyFiredCallback then nStoreAlreadyFiredCallback = true; cb(err)))
+    reloadDB(cb)
 
 evaluatePiefile = (cb) ->
   fs.readFile "Piefile", (err, code) ->
@@ -97,8 +96,15 @@ watch = (paths, options, eventHandler, cb = noop) ->
   w = new Watcher(paths, options, eventHandler)
   w.start (err) -> cb(err, w)
 
+reloadDB = (cb) ->
+  nStoreAlreadyFiredCallback = false
+  _db = nStore.new ".pie.db", (err) ->
+    if !nStoreAlreadyFiredCallback
+      nStoreAlreadyFiredCallback = true
+      cb(err)
+
 # exports, available in global namespace of Piefile
-_.extend(global, { option: option, task: task, invoke: invoke, map: map, compilers: compilers, watch: watch })
+_.extend(global, { option: option, task: task, invoke: invoke, map: map, compilers: compilers, watch: watch, reloadDB: reloadDB })
 
 getMtime = (file, cb) ->
   fs.stat file, (err, stats) ->
