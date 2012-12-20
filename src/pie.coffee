@@ -18,7 +18,7 @@ _tasks = {}
 _mappings = []
 _mappingsWatcher = null
 _db = null
-
+_runQueue = null
 
 # the entry point (called from bin/pie)
 exports.run = () ->
@@ -132,7 +132,7 @@ runAllMappings = (options, cb) ->
     cb(null)
 
 rm = (f, innerCb) ->
-  console.log "deleting", f
+  console.log "Deleting", f
   try
     fs.unlink f, (err) ->
       console.log(f, err) if err && err.code != "ENOENT"
@@ -164,7 +164,8 @@ handleMappingWatchEvent = (event) ->
   processMapping = (m, cb) ->
     unless event.isDelete() and !m.batch
       # run mapping on non-deletes, or if it's a deleted file in a batch mapping
-      m.runOnFiles([path], {}, cb)
+      _runQueue.add(m, [path])
+      cb()
     else
       # on a delete in non-batched mapping, delete the output file(s)
       m.cleanForFiles([path], cb)
@@ -288,6 +289,34 @@ class Mapping
       return cb(err) if err
       destFiles = _.uniq(_.flatten(_.map(srcFiles, @calculateDest)))
       async.forEach destFiles, rm, cb
+
+
+# queue up tasks and run one at a time
+class RunQueue
+  constructor: () ->
+    @running = false
+    @queue   = []
+
+  add: (mapping, paths) ->
+    if found = _.find(@queue, (e) -> e[0] is mapping)
+      found[1] = _.uniq(found[1].concat(paths))
+    else
+      @queue.push([mapping, paths])
+
+    unless @running
+      clearTimeout(@startRunTimer) if @startRunTimer
+      @startRunTimer = setTimeout(@run, 50)
+
+  run: () =>
+    clearTimeout(@startRunTimer) if @startRunTimer
+    if @queue.length > 0
+      @running = true
+      [m, paths] = @queue.shift()
+      m.runOnFiles(paths, {}, @run)
+    else
+      @running = false
+
+_runQueue = new RunQueue()
 
 
 # watch one or more files or directory trees, and call eventHandler if anything

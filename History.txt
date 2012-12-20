@@ -1,3 +1,6 @@
+== (Next release)
+  * Minor enhancements
+    * Commands running due to changed files are now run in serial (and commands are combined where possible).
 == 0.1.5 / 2012-10-04
   * Minor Enhancements
     * Generated files are now deleted when source files are removed or renamed.
