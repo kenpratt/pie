@@ -3,16 +3,16 @@ path          = require "path"
 util          = require "util"
 async         = require "async"
 CoffeeScript  = require "coffee-script"
+gaze          = require "gaze"
 glob          = require "glob"
 minimatch     = require "minimatch"
-fsWatchTree   = require "fs-watch-tree"
 nStore        = require "nstore"
 growl         = require "growl"
 compilers     = require "./compilers"
 optparse      = require "./optparse"
 _             = require "underscore"
 
-
+_cwd = process.cwd()
 _switches = []
 _tasks = {}
 _mappings = []
@@ -92,8 +92,8 @@ map = (name, args...) ->
   _mappings.push(m)
   task name, "Run #{name}", (options, cb) -> m.run(options, cb)
 
-watch = (paths, options, eventHandler, cb = noop) ->
-  w = new Watcher(paths, options, eventHandler)
+watch = (paths, eventHandler, cb = noop) ->
+  w = new Watcher(paths, eventHandler)
   w.start (err) -> cb(err, w)
 
 reloadDB = (cb) ->
@@ -150,27 +150,24 @@ watchMappings = (options, cb) ->
   _mappingsWatcher.stop() if _mappingsWatcher
 
   # calculate watch targets
-  toWatch = _.uniq(_.map(_.flatten(_.map(_mappings, (m) -> m.src)), (p) -> p.replace(/\*\*.*$/, '').replace(/\*\..+$/, '').replace(/\/$/, '')).sort())
-  toWatch = _.filter(toWatch, (s) -> _.all(toWatch, (t) -> s == t or s.indexOf(t + "/") != 0))
+  toWatch = _.uniq(_.flatten(_.map(_mappings, (m) -> m.src)))
 
   console.log "Starting watcher"
-  _mappingsWatcher = watch(toWatch, {}, handleMappingWatchEvent, cb)
+  _mappingsWatcher = watch(toWatch, handleMappingWatchEvent, cb)
 
-handleMappingWatchEvent = (event) ->
-  path = event.name
-  console.log if event.isDelete() then "#{path} was deleted" else "#{path} changed"
+handleMappingWatchEvent = (event, path) ->
+  console.log "#{path} was #{event}"
   mappings = _.filter(_mappings, (m) -> m.matchesSrc(path))
 
-  processMapping = (m, cb) ->
-    unless event.isDelete() and !m.batch
+  async.forEach mappings, (m, cb) ->
+    unless event is "deleted" and !m.batch
       # run mapping on non-deletes, or if it's a deleted file in a batch mapping
       _runQueue.add(m, [path])
       cb()
     else
       # on a delete in non-batched mapping, delete the output file(s)
       m.cleanForFiles([path], cb)
-
-  async.forEach mappings, processMapping, printErr
+  , printErr
 
 noop = () -> null
 
@@ -326,62 +323,15 @@ _runQueue = new RunQueue()
 # watch one or more files or directory trees, and call eventHandler if anything
 # changes (or is added or removed)
 class Watcher
-  constructor: (@paths, @options, @eventHandler) ->
-    @watches = []
-    @options ||= {}
-    @options.exclude = (@options.exclude || []).concat(/\.pie\.db$/, /\.DS_Store$/, /(^|\/)node_modules($|\/)/, /(^|\/)log($|\/)/, /(^|\/)tmp($|\/)/, /~$/, /\#$/, /\.\#.+$/, /\.swp$/, /\.lock$/, /~\.nib$/)
+  constructor: (@paths, @eventHandler) ->
+    @watcher = null
 
   start: (cb = noop) ->
-    if _.isArray(@paths)
-      async.forEachSeries(@paths, @watch, cb)
-    else
-      @watch(@paths, cb)
+    gaze @paths, (err, @watcher) =>
+      @watcher.on "all", (event, filepath) =>
+        filepath = filepath.replace("#{_cwd}\/", "")
+        @eventHandler(event, filepath)
 
   stop: (cb = noop) ->
-    _.each @watches, (w) -> w.end()
+    @watcher?.close()
     cb(null)
-
-  watch: (path, cb) =>
-    fs.stat path, (err, stats) =>
-      return cb(err) if err
-      if stats.isFile()
-        console.log "Watching #{path}"
-        @watches.push @watchFile(path)
-        cb(null)
-      else if stats.isDirectory()
-        console.log "Watching #{path}"
-        @watches.push @watchDir(path)
-        cb(null)
-      else
-        cb("Don't know how to watch #{path}, as it isn't a file or a directory")
-
-  # watch a directory tree
-  watchDir: (path) ->
-    fsWatchTree.watchTree(path, @options, @eventHandler)
-
-  # watch a single file, but call handler with event like fs-watch-tree
-  watchFile: (path) ->
-    issueChange = () =>
-      @eventHandler
-        isMkdir: () -> false
-        isDelete: () -> false
-        isModify: () -> true
-        isDirectory: () -> false
-        name: path
-    issueDelete = () =>
-      @eventHandler
-        isMkdir: () -> false
-        isDelete: () -> true
-        isModify: () -> false
-        isDirectory: () -> false
-        name: path
-    w = fs.watch path, (event) ->
-      if event == "change"
-        issueChange()
-      else if event == "rename"
-        fs.exists path, (exists) =>
-          if exists
-            issueChange()
-          else
-            issueDelete()
-    { end: () -> w.close() }
