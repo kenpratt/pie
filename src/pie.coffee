@@ -114,9 +114,9 @@ getMtime = (file, cb) ->
 printErr = (err) ->
   if err
     if err.stack?
-      console.log(err.stack)
+      console.log red(err.stack)
     else
-      console.log(shortErr(err))
+      console.log red(shortErr(err))
 
 shortErr = (err) ->
   if err.message?
@@ -127,18 +127,18 @@ shortErr = (err) ->
 runAllMappings = (options, cb) ->
   async.forEachSeries _mappings, ((m, innerCb) -> m.run(options, innerCb)), (err) ->
     return cb(err) if err
-    console.log "Build complete"
+    console.log green("Build complete")
     growl "Build complete"
     cb(null)
 
 rm = (f, innerCb) ->
-  console.log "Deleting", f
+  console.log "Deleting #{f}"
   try
     fs.unlink f, (err) ->
-      console.log(f, err) if err && err.code != "ENOENT"
+      console.log red("#{f}: #{err}") if err && err.code != "ENOENT"
       innerCb(null)
   catch err
-    console.log(f, err) if err && err.code != "ENOENT"
+    console.log red("#{f}: #{err}") if err && err.code != "ENOENT"
     innerCb(null)
 
 cleanAllMappings = (options, cb) ->
@@ -158,7 +158,7 @@ watchMappings = (options, cb) ->
 
 handleMappingWatchEvent = (event) ->
   path = event.name
-  console.log path, if event.isDelete() then "was deleted" else "changed"
+  console.log if event.isDelete() then "#{path} was deleted" else "#{path} changed"
   mappings = _.filter(_mappings, (m) -> m.matchesSrc(path))
 
   processMapping = (m, cb) ->
@@ -173,6 +173,10 @@ handleMappingWatchEvent = (event) ->
   async.forEach mappings, processMapping, printErr
 
 noop = () -> null
+
+red    = (str) -> "\x1B[0;31m#{str}\x1B[0m"
+green  = (str) -> "\x1B[0;32m#{str}\x1B[0m"
+yellow = (str) -> "\x1B[0;33m#{str}\x1B[0m"
 
 
 # just a lil' bit o' code
@@ -250,7 +254,7 @@ class Mapping
       @runOnFiles(files, options, cb)
 
   runOnFiles: (files, options, cb) ->
-    console.log "Running", @name, "on", files.length, "files"
+    console.log green("Running #{@name} on #{files.length} files")
     async.filter files, @hasChanged, (changedFiles) =>
       unchangedFiles = _.without(files, changedFiles)
 
@@ -341,11 +345,11 @@ class Watcher
     fs.stat path, (err, stats) =>
       return cb(err) if err
       if stats.isFile()
-        console.log "Watching", path
+        console.log "Watching #{path}"
         @watches.push @watchFile(path)
         cb(null)
       else if stats.isDirectory()
-        console.log "Watching", path
+        console.log "Watching #{path}"
         @watches.push @watchDir(path)
         cb(null)
       else

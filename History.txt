@@ -1,3 +1,6 @@
+== 0.1.7 / 2013-04-17
+  * Minor enhancements
+    * Added color to output.
 == 0.1.6 / 2012-12-20
   * Minor enhancements
     * Commands running due to changed files are now run in serial (and commands are combined where possible).
