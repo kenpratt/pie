@@ -1,3 +1,6 @@
+== 0.2.1 / 2013-04-18
+  * Minor enhancements
+    * Turned down interval for file polling to be friendlier to CPU.
 == 0.2.0 / 2013-04-17
   * Major enhancements
     * Watch triggers are much more stable.

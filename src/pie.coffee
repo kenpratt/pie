@@ -327,7 +327,7 @@ class Watcher
     @watcher = null
 
   start: (cb = noop) ->
-    gaze @paths, (err, @watcher) =>
+    gaze @paths, { interval: 250 }, (err, @watcher) =>
       @watcher.on "all", (event, filepath) =>
         filepath = filepath.replace("#{_cwd}\/", "")
         @eventHandler(event, filepath)
