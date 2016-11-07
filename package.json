@@ -1,5 +1,5 @@
 {
-  "name":         "pie",
+  "name":         "pie-build",
   "description":  "The smarter JS build tool",
   "keywords":     ["javascript", "coffeescript", "build", "cake", "make", "dependencies"],
   "author":       "Ken Pratt",

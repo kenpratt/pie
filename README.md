@@ -30,7 +30,7 @@ Installation
 ------------
 
 ```
-$ npm install pie -g
+$ npm install pie-build -g
 ```
 
 Usage
